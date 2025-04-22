@@ -1,0 +1,100 @@
+package templates
+
+import "strconv"
+
+templ Home(images []*ImageData, pagination *Pagination, query string) {
+	@Layout("Home") {
+		<div class="mb-8">
+			<h1 class="text-3xl font-bold mb-2">
+				if query != "" {
+					Search Results for "{ query }"
+				} else {
+					Image Gallery
+				}
+			</h1>
+			<p class="text-gray-400">
+				if pagination.TotalItems == 0 {
+					No images found
+				} else if pagination.TotalItems == 1 {
+					Showing 1 image
+				} else {
+					Showing { strconv.Itoa(pagination.TotalItems) } images
+				}
+			</p>
+		</div>
+
+		<div id="image-gallery">
+			@ImageList(images, pagination)
+		</div>
+	}
+}
+
+templ ImageList(images []*ImageData, pagination *Pagination) {
+	if len(images) == 0 {
+		<div class="py-12 text-center">
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+			</svg>
+			<h2 class="text-xl font-semibold mb-2">No images found</h2>
+			<p class="text-gray-400 mb-6">Upload some images to get started</p>
+			<a href="/upload" class="btn-primary py-2 px-6 rounded-full inline-block">Upload Images</a>
+		</div>
+	} else {
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			for _, image := range images {
+				<a href={ templ.SafeURL("/images/" + strconv.FormatInt(image.ID, 10)) } class="block">
+					<div class="bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition hover-primary h-full flex flex-col">
+						<div class="h-48 overflow-hidden bg-gray-800 flex items-center justify-center">
+							<img src={ image.URL } alt={ image.Name } class="w-full h-full object-cover" loading="lazy" />
+						</div>
+						<div class="p-4 flex-grow">
+							<h3 class="font-bold text-lg mb-1 text-white truncate">{ image.Name }</h3>
+							<p class="text-gray-400 text-sm line-clamp-2 h-10">{ image.Description }</p>
+						</div>
+						<div class="px-4 pb-4 text-xs text-gray-500">
+							{ formatDate(image.CreatedAt) }
+						</div>
+					</div>
+				</a>
+			}
+		</div>
+
+		if pagination.TotalPages > 1 {
+			<div class="mt-8 flex justify-center">
+				<div class="flex space-x-2">
+					if pagination.HasPrev {
+						<a 
+							href={ buildPaginationURL(pagination.CurrentPage - 1, pagination.Query) } 
+							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent"
+							hx-get={ buildPaginationURLString(pagination.CurrentPage - 1, pagination.Query) }
+							hx-target="#image-gallery"
+							hx-swap="innerHTML"
+						>
+							Previous
+						</a>
+					} else {
+						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">Previous</span>
+					}
+
+					<span class="px-4 py-2 bg-primary text-black rounded-md">
+						Page { strconv.Itoa(pagination.CurrentPage) } of { strconv.Itoa(pagination.TotalPages) }
+					</span>
+
+					if pagination.HasNext {
+						<a 
+							href={ buildPaginationURL(pagination.CurrentPage + 1, pagination.Query) } 
+							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent"
+							hx-get={ buildPaginationURLString(pagination.CurrentPage + 1, pagination.Query) }
+							hx-target="#image-gallery"
+							hx-swap="innerHTML"
+						>
+							Next
+						</a>
+					} else {
+						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">Next</span>
+					}
+				</div>
+			</div>
+		}
+	}
+}
