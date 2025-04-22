@@ -45,7 +45,7 @@ templ ImageList(images []*ImageData, pagination *Pagination) {
 				<a href={ templ.SafeURL("/images/" + strconv.FormatInt(image.ID, 10)) } class="block">
 					<div class="bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition hover-primary h-full flex flex-col">
 						<div class="h-48 overflow-hidden bg-gray-800 flex items-center justify-center">
-							<img src={ image.URL } alt={ image.Name } class="w-full h-full object-cover" loading="lazy" />
+							<img src={ image.URL } alt={ image.Name } class="image-thumbnail" loading="lazy" />
 						</div>
 						<div class="p-4 flex-grow">
 							<h3 class="font-bold text-lg mb-1 text-white truncate">{ image.Name }</h3>

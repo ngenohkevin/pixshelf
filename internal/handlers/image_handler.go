@@ -174,6 +174,8 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 		return
 	}
 
+	// Add HX-Redirect header to ensure redirection to gallery
+	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusNoContent)
 }
 
