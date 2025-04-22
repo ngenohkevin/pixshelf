@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: pixshelf-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pixshelf
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pixshelf-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ENV=development
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/pixshelf?sslmode=disable
+      - IMAGE_STORAGE=/app/static/images
+      - BASE_URL=http://localhost:8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./static/images:/app/static/images
+
+volumes:
+  postgres_data:
