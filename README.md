@@ -31,13 +31,6 @@ PixShelf is a simple image hosting application built with Go, HTMX, Alpine.js, a
 
 ### Installation
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/ngenohkevin/pixshelf.git
-cd pixshelf
-```
-
 2. Install dependencies:
 
 ```bash
@@ -79,17 +72,10 @@ The application will be available at http://localhost:8080.
 The application uses the following environment variables:
 
 - `PORT`: Server port (default: 8080)
-- `DATABASE_URL`: PostgreSQL connection string (default: "postgres://postgres:postgres@localhost:5432/pixshelf?sslmode=disable")
+- `DATABASE_URL`: PostgreSQL connection string
 - `ENV`: Environment name (default: "development")
 - `IMAGE_STORAGE`: Path to store images (default: "./static/images")
 - `BASE_URL`: Base URL for generating image URLs (default: "http://localhost:8080")
-
-## Deployment with Coolify
-
-1. Push the code to your repository.
-2. In Coolify, create a new service pointing to your repository.
-3. Configure the required environment variables.
-4. Deploy the service.
 
 ## License
 
