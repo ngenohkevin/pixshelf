@@ -3,8 +3,9 @@ FROM golang:1.23-alpine AS builder
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git
+# Install dependencies including templ CLI
+RUN apk add --no-cache git && \
+    go install github.com/a-h/templ/cmd/templ@v0.3.857
 
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
@@ -14,6 +15,9 @@ RUN go mod download
 
 # Copy the source code
 COPY . .
+
+# Generate templ files
+RUN templ generate
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o pixshelf ./cmd/server/main.go
