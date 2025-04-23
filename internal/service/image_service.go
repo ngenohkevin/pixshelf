@@ -145,14 +145,24 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 	if err != nil {
 		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
 	}
-	defer src.Close()
+	defer func(src multipart.File) {
+		err := src.Close()
+		if err != nil {
+			return
+		}
+	}(src)
 
 	// Create the destination file
 	dst, err := os.Create(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create destination file: %w", err)
 	}
-	defer dst.Close()
+	defer func(dst *os.File) {
+		err := dst.Close()
+		if err != nil {
+			return
+		}
+	}(dst)
 
 	// Copy the uploaded file to the destination file
 	if _, err = io.Copy(dst, src); err != nil {
@@ -174,7 +184,10 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 	img, err = s.repo.Create(ctx, img)
 	if err != nil {
 		// Clean up the file if database insertion fails
-		os.Remove(filePath)
+		err := os.Remove(filePath)
+		if err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 
