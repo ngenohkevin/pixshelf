@@ -19,7 +19,10 @@ go.work
 
 # Environment variables
 .env
-.env.example
+.env.production
+.env.local
+.env.*
+!.env.example
 
 # IDE files
 .idea/
