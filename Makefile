@@ -60,7 +60,7 @@ setup: migrate-up sqlc templ
 
 # Start PostgreSQL container for development
 db-start:
-	docker-compose up -d db
+	docker compose up -d db
 
 # Stop PostgreSQL container
 db-stop:

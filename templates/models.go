@@ -10,6 +10,7 @@ type ImageData struct {
 	Name        string
 	Description string
 	URL         string
+	PublicURL   string
 	MimeType    string
 	SizeBytes   int64
 	CreatedAt   time.Time

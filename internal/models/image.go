@@ -18,7 +18,14 @@ type Image struct {
 
 // ImageURL returns the URL for accessing the image
 func (i *Image) ImageURL(baseURL string) string {
+	// For backward compatibility, keep the original URL structure
 	return baseURL + "/static/images/" + i.FilePath
+}
+
+// PublicImageURL returns the public URL for accessing the image in a more shareable format
+func (i *Image) PublicImageURL(baseURL string) string {
+	// Format: https://pixshelf.perigrine.cloud/public-images/{uuid}_{image_name}.extension
+	return baseURL + "/public-images/" + i.FilePath
 }
 
 // PublicImage represents the public-facing image data
@@ -27,6 +34,7 @@ type PublicImage struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
+	PublicURL   string    `json:"public_url"`
 	MimeType    string    `json:"mime_type"`
 	SizeBytes   int64     `json:"size_bytes"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -40,6 +48,7 @@ func NewPublicImage(image *Image, baseURL string) *PublicImage {
 		Name:        image.Name,
 		Description: image.Description,
 		URL:         image.ImageURL(baseURL),
+		PublicURL:   image.PublicImageURL(baseURL),
 		MimeType:    image.MimeType,
 		SizeBytes:   image.SizeBytes,
 		CreatedAt:   image.CreatedAt,

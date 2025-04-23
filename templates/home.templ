@@ -40,61 +40,137 @@ templ ImageList(images []*ImageData, pagination *Pagination) {
 			<a href="/upload" class="btn-primary py-2 px-6 rounded-full inline-block">Upload Images</a>
 		</div>
 	} else {
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
 			for _, image := range images {
-				<a href={ templ.SafeURL("/images/" + strconv.FormatInt(image.ID, 10)) } class="block">
-					<div class="bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition hover-primary h-full flex flex-col">
-						<div class="h-48 overflow-hidden bg-gray-800 flex items-center justify-center">
-							<img src={ image.URL } alt={ image.Name } class="image-thumbnail" loading="lazy" />
+				<div class="transition-all duration-300 hover:-translate-y-2 relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl bg-gray-800/80 backdrop-blur-sm">
+					<a href={ templ.SafeURL("/view-image/" + strconv.FormatInt(image.ID, 10)) } class="block rounded-xl overflow-hidden h-full flex flex-col no-underline">
+						<div class="sm:h-48 h-40 overflow-hidden bg-gray-800 flex items-center justify-center relative">
+							<img src={ image.URL } alt={ image.Name } class="image-thumbnail w-full h-full object-cover" loading="lazy" />
+							<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-30 hover:opacity-0 transition-all duration-300"></div>
 						</div>
-						<div class="p-4 flex-grow">
+						<div class="p-4 sm:p-5 flex-grow bg-gray-800">
 							<h3 class="font-bold text-lg mb-1 text-white truncate">{ image.Name }</h3>
-							<p class="text-gray-400 text-sm line-clamp-2 h-10">{ image.Description }</p>
+							<p class="text-gray-300 text-sm line-clamp-2 h-10">{ image.Description }</p>
 						</div>
-						<div class="px-4 pb-4 text-xs text-gray-500">
-							{ formatDate(image.CreatedAt) }
+						<div class="px-4 sm:px-5 py-3 text-sm text-gray-400 flex justify-between items-center relative bg-gray-800 border-t border-gray-700">
+							<span>{ formatDate(image.CreatedAt) }</span>
+							<button 
+								class="p-2 bg-gray-700 text-primary hover:text-white rounded-full focus:outline-none gallery-copy-btn transition-all duration-200 active:scale-90 hover:bg-gray-600 z-10 shadow-lg" 
+								data-url={ image.PublicURL }
+								title="Copy image URL"
+								type="button"
+								onclick="event.preventDefault(); event.stopPropagation(); copyImageUrl(this);"
+								aria-label="Copy image URL"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+								</svg>
+							</button>
 						</div>
-					</div>
-				</a>
+					</a>
+				</div>
 			}
 		</div>
 
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				// Find all gallery copy buttons and ensure they have the proper event handlers
+				const copyButtons = document.querySelectorAll('.gallery-copy-btn');
+				
+				// Make sure each button has the copy event handler
+				copyButtons.forEach(button => {
+					button.addEventListener('click', function(e) {
+						e.preventDefault();
+						e.stopPropagation();
+						const url = this.getAttribute('data-url');
+						if (url) {
+							copyImageUrl(this);
+						}
+					});
+				});
+			});
+		</script>
+
 		if pagination.TotalPages > 1 {
 			<div class="mt-8 flex justify-center">
-				<div class="flex space-x-2">
+				<div class="flex space-x-2 items-center flex-wrap justify-center gap-2">
 					if pagination.HasPrev {
 						<a 
 							href={ buildPaginationURL(pagination.CurrentPage - 1, pagination.Query) } 
-							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent"
+							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent transition-all duration-200 hover:shadow-lg active:scale-95"
 							hx-get={ buildPaginationURLString(pagination.CurrentPage - 1, pagination.Query) }
 							hx-target="#image-gallery"
-							hx-swap="innerHTML"
+							hx-swap="innerHTML transition:true"
+							hx-indicator=".pagination-loading"
 						>
-							Previous
+							<div class="flex items-center">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+								</svg>
+								Previous
+							</div>
 						</a>
 					} else {
-						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">Previous</span>
+						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">
+							<div class="flex items-center">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+								</svg>
+								Previous
+							</div>
+						</span>
 					}
 
-					<span class="px-4 py-2 bg-primary text-black rounded-md">
+					<span class="px-4 py-2 bg-primary text-black rounded-md flex items-center">
+						<span class="pagination-loading htmx-indicator hidden">
+							<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						</span>
 						Page { strconv.Itoa(pagination.CurrentPage) } of { strconv.Itoa(pagination.TotalPages) }
 					</span>
 
 					if pagination.HasNext {
 						<a 
 							href={ buildPaginationURL(pagination.CurrentPage + 1, pagination.Query) } 
-							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent"
+							class="px-4 py-2 bg-card border border-dark rounded-md hover:bg-dark-accent transition-all duration-200 hover:shadow-lg active:scale-95"
 							hx-get={ buildPaginationURLString(pagination.CurrentPage + 1, pagination.Query) }
 							hx-target="#image-gallery"
-							hx-swap="innerHTML"
+							hx-swap="innerHTML transition:true"
+							hx-indicator=".pagination-loading"
 						>
-							Next
+							<div class="flex items-center">
+								Next
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+								</svg>
+							</div>
 						</a>
 					} else {
-						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">Next</span>
+						<span class="px-4 py-2 bg-card border border-dark rounded-md opacity-50 cursor-not-allowed">
+							<div class="flex items-center">
+								Next
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+								</svg>
+							</div>
+						</span>
 					}
 				</div>
 			</div>
+
+			<style>
+				.htmx-indicator {
+					display: none;
+				}
+				.htmx-request .htmx-indicator {
+					display: inline-block;
+				}
+				.htmx-request.htmx-indicator {
+					display: inline-block;
+				}
+			</style>
 		}
 	}
 }

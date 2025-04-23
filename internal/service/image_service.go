@@ -25,6 +25,11 @@ type ImageService struct {
 	maxFileSize int64
 }
 
+// GetUploadPath returns the path where images are stored
+func (s *ImageService) GetUploadPath() string {
+	return s.uploadPath
+}
+
 // NewImageService creates a new ImageService
 func NewImageService(repo *repository.ImageRepository, cfg *config.Config) *ImageService {
 	return &ImageService{
@@ -134,7 +139,8 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
-	// Generate a unique filename
+	// Generate a unique filename that's more readable
+	// Format: {timestamp}_{original_name_sanitized}
 	filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), sanitizeFilename(file.Filename))
 	filePath := filepath.Join(s.uploadPath, filename)
 

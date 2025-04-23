@@ -1,121 +1,668 @@
 package templates
 
 templ Layout(title string) {
-	<!DOCTYPE html>
+	<!doctype html>
 	<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>{ title } | PixShelf</title>
-		<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-		<script src="https://unpkg.com/htmx.org@1.9.6"></script>
-		<script src="https://unpkg.com/alpinejs@3.12.3/dist/cdn.min.js" defer></script>
-		<style>
-			/* Dark mode */
-			body {
-				background-color: #121212;
-				color: #e0e0e0;
-			}
-			.bg-card {
-				background-color: #1e1e1e;
-			}
-			.bg-dark-accent {
-				background-color: #2d2d2d;
-			}
-			.border-dark {
-				border-color: #333;
-			}
-			.text-primary {
-				color: #bb86fc;
-			}
-			.hover-primary:hover {
-				background-color: #332940;
-			}
-			.btn-primary {
-				background-color: #bb86fc !important;
-				color: #000000 !important;
-				font-weight: 600 !important;
-			}
-			.btn-primary:hover {
-				background-color: #a370e0 !important;
-			}
-			.btn-danger {
-				background-color: #cf6679 !important;
-				color: #000 !important;
-			}
-			.btn-danger:hover {
-				background-color: #b55c6a !important;
-			}
-			/* Custom styles for image display */
-			.image-thumbnail {
-				width: 100%;
-				height: 192px;
-				object-fit: cover;
-			}
-			.image-detail-container {
-				height: 450px;
-				max-height: 60vh;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-			}
-			.image-detail {
-				max-width: 100%;
-				max-height: 450px;
-				object-fit: contain;
-				width: auto;
-				height: auto;
-			}
-			.custom-upload-button {
-				background-color: #bb86fc !important;
-				color: #000000 !important;
-				font-weight: 700 !important;
-				padding: 0.5rem 1rem !important;
-				border-radius: 0.375rem !important;
-			}
-			.custom-delete-button {
-				background-color: #f44336 !important;
-				color: white !important;
-				font-weight: 700 !important;
-				padding: 0.5rem 1rem !important;
-				border-radius: 0.375rem !important;
-			}
-		</style>
-	</head>
-	<body class="min-h-screen flex flex-col">
-		<nav class="bg-dark-accent border-b border-dark py-4">
-			<div class="container mx-auto px-4 flex justify-between items-center">
-				<a href="/" class="text-2xl font-bold text-primary">PixShelf</a>
-				<div class="flex items-center space-x-4">
-					<form action="/search" class="relative" hx-get="/search" hx-trigger="submit, keyup delay:300ms changed" hx-target="#image-gallery" hx-swap="innerHTML">
-						<input
-							type="text"
-							name="q"
-							placeholder="Search..."
-							class="bg-card rounded-full py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary text-white border border-dark"
-						/>
-						<button type="submit" class="absolute right-0 top-0 mt-2 mr-3">
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-							</svg>
-						</button>
-					</form>
-					<a href="/upload" class="custom-upload-button rounded-full">
-						Upload
-					</a>
+		<head>
+			<meta charset="UTF-8" />
+			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			<title>{ title } | PixShelf</title>
+			<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+			<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+			<script src="https://unpkg.com/alpinejs@3.12.3/dist/cdn.min.js" defer></script>
+			<script>
+				// Global function for copying image URLs
+				function copyImageUrl(button) {
+					const url = button.getAttribute('data-url');
+					if (!url) {
+						console.error('No URL found to copy');
+						return;
+					}
+					
+					// Fallback for clipboard API
+					const fallbackCopyTextToClipboard = (text) => {
+						// Create textarea element
+						const textArea = document.createElement("textarea");
+						textArea.value = text;
+						
+						// Make it invisible but part of the document
+						textArea.style.position = "fixed";
+						textArea.style.left = "-999999px";
+						textArea.style.top = "-999999px";
+						document.body.appendChild(textArea);
+						
+						// Select and copy the text
+						textArea.focus();
+						textArea.select();
+						
+						let successful = false;
+						try {
+							successful = document.execCommand('copy');
+						} catch (err) {
+							console.error('Fallback: Unable to copy', err);
+						}
+						
+						// Clean up
+						document.body.removeChild(textArea);
+						return successful;
+					};
+					
+					// Try to use modern clipboard API first
+					if (navigator.clipboard && window.isSecureContext) {
+						navigator.clipboard.writeText(url).then(() => {
+							showCopySuccess(button);
+						}).catch(err => {
+							console.warn('Clipboard API failed, trying fallback', err);
+							if (fallbackCopyTextToClipboard(url)) {
+								showCopySuccess(button);
+							}
+						});
+					} else {
+						// Use fallback for non-secure contexts
+						if (fallbackCopyTextToClipboard(url)) {
+							showCopySuccess(button);
+						}
+					}
+				}
+				
+				function copyImageUrl(button) {
+					console.log("Copy function called with URL:", button.getAttribute('data-url'));
+					const url = button.getAttribute('data-url');
+					if (!url) {
+						console.error('No URL found to copy');
+						return;
+					}
+					
+					// Try to use modern clipboard API first
+					if (navigator.clipboard && window.isSecureContext) {
+						navigator.clipboard.writeText(url).then(() => {
+							console.log("Copied to clipboard with API:", url);
+							showCopySuccess(button);
+						}).catch(err => {
+							console.error('Clipboard API failed:', err);
+							fallbackCopyTextToClipboard(url, button);
+						});
+					} else {
+						// Use fallback for non-secure contexts
+						fallbackCopyTextToClipboard(url, button);
+					}
+				}
+				
+				function fallbackCopyTextToClipboard(text, button) {
+					// Create textarea element
+					const textArea = document.createElement("textarea");
+					textArea.value = text;
+					
+					// Make it invisible but part of the document
+					textArea.style.position = "fixed";
+					textArea.style.left = "-999999px";
+					textArea.style.top = "-999999px";
+					document.body.appendChild(textArea);
+					
+					// Select and copy the text
+					textArea.focus();
+					textArea.select();
+					
+					let successful = false;
+					try {
+						successful = document.execCommand('copy');
+						console.log("Fallback copy success:", successful);
+						if (successful) {
+							showCopySuccess(button);
+						}
+					} catch (err) {
+						console.error('Fallback: Unable to copy', err);
+					}
+					
+					// Clean up
+					document.body.removeChild(textArea);
+				}
+				
+				function showCopySuccess(button) {
+					// Store original content
+					const originalInnerHTML = button.innerHTML;
+					const originalBackgroundColor = button.style.backgroundColor;
+					
+					// Get the URL that was copied
+					const url = button.getAttribute('data-url');
+					
+					// Show success feedback on the button
+					button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+					button.style.backgroundColor = 'rgba(187, 134, 252, 0.8)'; // Brighter primary color
+					button.style.boxShadow = '0 0 12px rgba(187, 134, 252, 0.5)'; // Add glow effect
+					
+					// Add tooltip or text feedback if button contains text
+					if (button.id === 'detail-copy-btn') {
+						button.innerText = 'Copied!';
+					}
+					
+					// Create and show notification at top of screen
+					const notification = document.createElement('div');
+					notification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-xl z-50 flex items-center space-x-2 animate-fade-in-out max-w-xs sm:max-w-md';
+					notification.innerHTML = `
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+						</svg>
+						<span>${url ? 'URL copied to clipboard!' : 'Copied to clipboard!'}</span>
+					`;
+					document.body.appendChild(notification);
+					
+					// Remove notification after animation completes
+					setTimeout(() => {
+						notification.remove();
+					}, 2000);
+					
+					// Restore original button content after delay
+					setTimeout(() => {
+						button.innerHTML = originalInnerHTML;
+						button.style.backgroundColor = originalBackgroundColor;
+						button.style.boxShadow = '';
+					}, 1500);
+				}
+				
+				// Animation keyframes for notifications
+				document.head.insertAdjacentHTML('beforeend', `
+					<style>
+						@keyframes fadeInOut {
+							0% { opacity: 0; transform: translateY(-10px); }
+							10% { opacity: 1; transform: translateY(0); }
+							90% { opacity: 1; transform: translateY(0); }
+							100% { opacity: 0; transform: translateY(-10px); }
+						}
+						.animate-fade-in-out {
+							animation: fadeInOut 1.5s ease-in-out forwards;
+						}
+					</style>
+				`);
+
+				// Initialize tooltips and event listeners for copy buttons
+				document.addEventListener('DOMContentLoaded', function() {
+					// Direct binding for all copy buttons - make this our primary approach
+					document.body.addEventListener('click', function(e) {
+						const button = e.target.closest('.gallery-copy-btn, .copy-url-button');
+						if (button) {
+							e.preventDefault();
+							e.stopPropagation();
+							const url = button.getAttribute('data-url');
+							if (url) {
+								copyImageUrl(button);
+							}
+						}
+					});
+
+					// Initialize tooltips
+					function initializeTooltips() {
+						const copyButtons = document.querySelectorAll('.gallery-copy-btn, .copy-url-button');
+						copyButtons.forEach(button => {
+							// Add tooltip functionality
+							button.addEventListener('mouseenter', function() {
+								// Remove any existing tooltips first
+								const existingTooltip = button.querySelector('.tooltip');
+								if (existingTooltip) existingTooltip.remove();
+								
+								const tooltip = document.createElement('div');
+								tooltip.className = 'tooltip bg-gray-800 text-white text-xs rounded py-1 px-2 absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 transition-opacity duration-200';
+								tooltip.innerText = 'Copy to clipboard';
+								tooltip.style.zIndex = '50';
+								button.appendChild(tooltip);
+								setTimeout(() => tooltip.classList.add('opacity-100'), 10);
+							});
+							
+							button.addEventListener('mouseleave', function() {
+								const tooltip = button.querySelector('.tooltip');
+								if (tooltip) {
+									tooltip.classList.remove('opacity-100');
+									setTimeout(() => tooltip.remove(), 200);
+								}
+							});
+						});
+					}
+					
+					// Initialize tooltips on page load
+					initializeTooltips();
+					
+					// Re-initialize after HTMX content swaps (pagination, search)
+					document.body.addEventListener('htmx:afterSwap', function() {
+						initializeTooltips();
+					});
+				});
+			</script>
+			<style>
+				/* Dark mode */
+				body {
+					background-color: #111111;
+					color: #f0f0f0;
+					font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+				}
+				.bg-card {
+					background-color: #1e1e1e;
+				}
+				.bg-dark-accent {
+					background-color: #222222;
+				}
+				.border-dark {
+					border-color: #333;
+				}
+				.text-primary {
+					color: #bb86fc;
+				}
+				.hover-primary:hover {
+					background-color: #332940;
+				}
+				.btn-primary {
+					background-color: #bb86fc !important;
+					color: #000000 !important;
+					font-weight: 600 !important;
+					transition: all 0.2s ease-in-out !important;
+				}
+				.btn-primary:hover {
+					background-color: #a370e0 !important;
+					transform: translateY(-2px);
+					box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
+				}
+				.btn-danger {
+					background-color: #cf6679 !important;
+					color: #000 !important;
+				}
+				.btn-danger:hover {
+					background-color: #b55c6a !important;
+				}
+				
+				/* Nav styling improvements */
+				nav {
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+				}
+				
+				/* Better search input styling */
+				input[type="text"] {
+					transition: all 0.3s ease;
+					border: 1px solid #333;
+				}
+				
+				input[type="text"]:focus {
+					border-color: #bb86fc;
+					box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+				}
+				
+				/* Custom styles for image display */
+				.image-thumbnail {
+					width: 100%;
+					height: 100%;
+					object-fit: cover;
+					transition: all 0.4s ease-in-out;
+				}
+				.image-detail-container {
+					height: 450px;
+					max-height: 60vh;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					border-radius: 8px;
+					overflow: hidden;
+					background-color: #0c0c0c;
+				}
+				.image-detail {
+					max-width: 100%;
+					max-height: 450px;
+					object-fit: contain;
+					width: auto;
+					height: auto;
+				}
+				
+				/* URL container styling */
+				.url-container {
+					background-color: #1a1a1a;
+					border: 1px solid #333;
+					position: relative;
+					overflow-x: auto;
+					-webkit-overflow-scrolling: touch;
+					scrollbar-width: thin;
+					scrollbar-color: #bb86fc #1a1a1a;
+				}
+				
+				.url-container::-webkit-scrollbar {
+					height: 6px;
+					background-color: #1a1a1a;
+				}
+				
+				.url-container::-webkit-scrollbar-thumb {
+					background-color: #bb86fc;
+					border-radius: 3px;
+				}
+				
+				.url-container::-webkit-scrollbar-track {
+					background-color: #1a1a1a;
+				}
+				
+				/* Improve card styling */
+				a:hover .image-thumbnail {
+					transform: scale(1.08);
+					filter: brightness(1.1);
+				}
+				
+				/* Premium copy button styling */
+				.gallery-copy-btn {
+					z-index: 10;
+					width: 40px;
+					height: 40px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+					box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+					background-color: #1e1e1e !important;
+					border: 1px solid rgba(187, 134, 252, 0.3);
+				}
+				
+				.gallery-copy-btn:hover {
+					transform: scale(1.1);
+					background-color: #2a2a2a !important;
+					box-shadow: 0 4px 12px rgba(187, 134, 252, 0.4);
+					border-color: rgba(187, 134, 252, 0.6);
+				}
+				
+				.gallery-copy-btn:active {
+					transform: scale(0.95);
+					background-color: rgba(187, 134, 252, 0.3) !important;
+				}
+				
+				.gallery-copy-btn svg {
+					filter: drop-shadow(0 0 1px rgba(187, 134, 252, 0.5));
+				}
+				
+				/* Better grid styling */
+				.grid {
+					display: grid;
+					grid-gap: 20px;
+				}
+				
+				/* Premium buttons */
+				.custom-upload-button {
+					background-color: #bb86fc !important;
+					color: #000000 !important;
+					font-weight: 700 !important;
+					padding: 0.5rem 1.25rem !important;
+					border-radius: 0.5rem !important;
+					box-shadow: 0 4px 10px rgba(187, 134, 252, 0.3);
+					border: 1px solid rgba(255, 255, 255, 0.1);
+					letter-spacing: 0.5px;
+				}
+				
+				.custom-upload-button:hover {
+					background-color: #c99aff !important;
+					transform: translateY(-2px);
+					box-shadow: 0 6px 14px rgba(187, 134, 252, 0.4);
+				}
+				
+				.custom-delete-button {
+					background-color: #cf6679 !important;
+					color: white !important;
+					font-weight: 700 !important;
+					padding: 0.5rem 1.25rem !important;
+					border-radius: 0.5rem !important;
+					box-shadow: 0 4px 10px rgba(207, 102, 121, 0.3);
+				}
+				
+				.custom-delete-button:hover {
+					background-color: #d67b8a !important;
+					transform: translateY(-2px);
+					box-shadow: 0 6px 14px rgba(207, 102, 121, 0.4);
+				}
+
+				/* Tooltip styles */
+				.tooltip {
+					position: absolute;
+					z-index: 50;
+					pointer-events: none;
+					background-color: rgba(30, 30, 30, 0.9);
+					backdrop-filter: blur(8px);
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+					border: 1px solid rgba(187, 134, 252, 0.3);
+				}
+				
+				/* Notification animation */
+				@keyframes fadeInOut {
+					0% { opacity: 0; transform: translate(-50%, -20px); }
+					10% { opacity: 1; transform: translate(-50%, 0); }
+					90% { opacity: 1; transform: translate(-50%, 0); }
+					100% { opacity: 0; transform: translate(-50%, -20px); }
+				}
+				
+				.animate-fade-in-out {
+					animation: fadeInOut 2s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+				}
+                
+                /* Removed mobile search toggle CSS as we now have a permanent search bar */
+
+				/* Improve mobile responsiveness */
+				@media (max-width: 640px) {
+					.container {
+						width: 100%;
+						padding-left: 16px;
+						padding-right: 16px;
+					}
+					
+					main.container {
+						padding-top: 16px;
+						padding-bottom: 16px;
+					}
+					
+					.image-thumbnail {
+						height: 200px;
+					}
+
+					.image-detail-container {
+						height: auto;
+						max-height: 50vh;
+					}
+
+					/* Improve form layout on mobile */
+					form.relative {
+						width: 100%;
+						max-width: 100%;
+					}
+					
+					/* Single column grid on mobile */
+					.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4 {
+						grid-template-columns: 1fr;
+						gap: 20px;
+					}
+					
+					/* Make copy buttons more tappable on mobile */
+					.gallery-copy-btn {
+						width: 44px;
+						height: 44px;
+					}
+					
+					/* Improve spacing for better mobile experience */
+					.mb-8 {
+						margin-bottom: 1rem;
+					}
+					
+					.p-5 {
+						padding: 16px;
+					}
+					
+					.py-3 {
+						padding-top: 10px;
+						padding-bottom: 10px;
+					}
+					
+					.px-5 {
+						padding-left: 16px;
+						padding-right: 16px;
+					}
+					
+					.text-3xl {
+						font-size: 1.75rem;
+					}
+					
+					/* Improve button layout on mobile */
+					.flex.space-x-2.w-full.sm\\:w-auto {
+						margin-top: 0.5rem;
+						justify-content: space-between;
+					}
+					
+					.flex.items-center.gap-4.w-full.sm\\:w-auto.justify-between {
+						padding-top: 0.5rem;
+					}
+					
+					.url-container {
+						max-height: 60px;
+					}
+				}
+				
+				/* Small tablet layout */
+				@media (min-width: 641px) and (max-width: 768px) {
+					.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4 {
+						grid-template-columns: repeat(2, 1fr);
+						gap: 20px;
+					}
+				}
+				
+				/* Medium tablet layout */
+				@media (min-width: 769px) and (max-width: 1024px) {
+					.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4 {
+						grid-template-columns: repeat(3, 1fr);
+						gap: 20px;
+					}
+				}
+
+				/* Touch feedback for mobile */
+				@media (hover: none) {
+					.btn-primary:active, .custom-upload-button:active, 
+					.custom-delete-button:active, .gallery-copy-btn:active,
+					.copy-url-button:active, a[hx-get]:active {
+						transform: scale(0.95);
+						transition: transform 0.1s;
+					}
+					
+					/* Add touch ripple effect */
+					.gallery-copy-btn:after, .custom-upload-button:after, 
+					.custom-delete-button:after, .copy-url-button:after {
+						content: "";
+						display: block;
+						position: absolute;
+						width: 100%;
+						height: 100%;
+						top: 0;
+						left: 0;
+						pointer-events: none;
+						background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+						background-repeat: no-repeat;
+						background-position: 50%;
+						transform: scale(10, 10);
+						opacity: 0;
+						transition: transform .3s, opacity .5s;
+					}
+					
+					.gallery-copy-btn:active:after, .custom-upload-button:active:after, 
+					.custom-delete-button:active:after, .copy-url-button:active:after {
+						transform: scale(0, 0);
+						opacity: .3;
+						transition: 0s;
+					}
+				}
+				
+				/* Add smooth transitions and animations */
+				.btn-primary, .custom-upload-button, .custom-delete-button, 
+				.gallery-copy-btn, .copy-url-button, a[hx-get], nav a, .image-thumbnail {
+					transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+				}
+				
+				/* Add position relative for ripple effects */
+				.gallery-copy-btn, .custom-upload-button, 
+				.custom-delete-button, .copy-url-button {
+					position: relative;
+					overflow: hidden;
+				}
+				
+				/* Add glass morphism effect to cards */
+				.bg-gray-800 {
+					background-color: rgba(30, 30, 30, 0.9);
+					backdrop-filter: blur(10px);
+				}
+				
+				/* Better shadows for cards */
+				.shadow-xl {
+					box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2),
+								0 8px 10px -6px rgba(0, 0, 0, 0.1);
+				}
+				
+				.hover\\:shadow-2xl:hover {
+					box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+				}
+				
+				/* Add subtle border to make UI more premium */
+				.rounded-lg, .rounded-xl {
+					border: 1px solid rgba(255, 255, 255, 0.05);
+				}
+			</style>
+			
+			<script>
+				// Mobile search toggle code removed as we now have a permanent search bar
+			</script>
+		</head>
+		<body class="min-h-screen flex flex-col">
+			<nav class="bg-dark-accent border-b border-dark py-4 sticky top-0 z-50 shadow-lg">
+				<div class="container mx-auto px-4">
+					<div class="flex justify-between items-center">
+						<a href="/" class="text-2xl font-bold text-primary flex-shrink-0">PixShelf</a>
+						
+						<div class="flex items-center space-x-3">
+							<a href="/upload" class="custom-upload-button rounded-full flex items-center shadow-lg whitespace-nowrap">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+								</svg>
+								<span>Upload</span>
+							</a>
+						</div>
+					</div>
+					
+					<!-- Search bar - always visible -->
+					<div class="mt-4">
+						<form
+							action="/search"
+							class="relative w-full"
+							hx-get="/search"
+							hx-trigger="submit, keyup delay:300ms changed"
+							hx-target="#image-gallery"
+							hx-swap="innerHTML"
+						>
+							<input
+								type="text"
+								name="q"
+								placeholder="Search images..."
+								class="bg-card rounded-full py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary text-white border border-dark w-full"
+							/>
+							<button type="submit" class="absolute right-0 top-0 mt-2 mr-3">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-6 w-6 text-primary"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
+								</svg>
+							</button>
+						</form>
+					</div>
 				</div>
-			</div>
-		</nav>
-
-		<main class="container mx-auto py-8 px-4 flex-grow">
-			{ children... }
-		</main>
-
-		<footer class="bg-dark-accent border-t border-dark py-6 mt-auto">
-			<div class="container mx-auto px-4 text-center text-sm text-gray-400">
-				<p>© 2025 PixShelf - A simple image hosting application</p>
-			</div>
-		</footer>
-	</body>
+			</nav>
+			<main class="container mx-auto py-8 px-4 flex-grow">
+				{ children... }
+			</main>
+			<footer class="bg-dark-accent border-t border-dark py-6 mt-auto">
+				<div class="container mx-auto px-4 text-center text-sm text-gray-400">
+					<p>© 2025 PixShelf - A simple image hosting application</p>
+				</div>
+			</footer>
+		</body>
 	</html>
 }

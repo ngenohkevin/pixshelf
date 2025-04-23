@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -179,6 +180,18 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// GetImageByFilePath retrieves an image by its file path
+func (h *ImageHandler) GetImageByFilePath(c *gin.Context) {
+	filePath := c.Param("filepath")
+	if filePath == "" {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	// Serve the static file
+	c.File(filepath.Join(h.service.GetUploadPath(), filePath))
+}
+
 // RegisterRoutes registers the image routes
 func (h *ImageHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
@@ -190,6 +203,9 @@ func (h *ImageHandler) RegisterRoutes(router *gin.Engine) {
 		api.PUT("/images/:id", h.UpdateImage)
 		api.DELETE("/images/:id", h.DeleteImage)
 	}
+
+	// Add the public image URL route
+	router.GET("/public-images/:filepath", h.GetImageByFilePath)
 }
 
 // ImageService defines the interface for image service
@@ -200,4 +216,5 @@ type ImageService interface {
 	Create(ctx context.Context, file interface{}, name, description string) (*models.PublicImage, error)
 	Update(ctx context.Context, id int64, name, description string) (*models.PublicImage, error)
 	Delete(ctx context.Context, id int64) error
+	GetUploadPath() string
 }

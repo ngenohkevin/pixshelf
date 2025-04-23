@@ -53,6 +53,7 @@ func (h *UIHandler) Home(c *gin.Context) {
 				Name:        img.Name,
 				Description: img.Description,
 				URL:         img.URL,
+				PublicURL:   img.PublicURL,
 				MimeType:    img.MimeType,
 				SizeBytes:   img.SizeBytes,
 				CreatedAt:   img.CreatedAt,
@@ -121,6 +122,7 @@ func (h *UIHandler) ImageDetail(c *gin.Context) {
 		Name:        img.Name,
 		Description: img.Description,
 		URL:         img.URL,
+		PublicURL:   img.PublicURL,
 		MimeType:    img.MimeType,
 		SizeBytes:   img.SizeBytes,
 		CreatedAt:   img.CreatedAt,
@@ -155,6 +157,7 @@ func (h *UIHandler) Edit(c *gin.Context) {
 		Name:        img.Name,
 		Description: img.Description,
 		URL:         img.URL,
+		PublicURL:   img.PublicURL,
 	}
 
 	component := templates.Edit(imageData)
@@ -193,6 +196,7 @@ func (h *UIHandler) SearchResults(c *gin.Context) {
 			Name:        img.Name,
 			Description: img.Description,
 			URL:         img.URL,
+			PublicURL:   img.PublicURL,
 			MimeType:    img.MimeType,
 			SizeBytes:   img.SizeBytes,
 			CreatedAt:   img.CreatedAt,
@@ -215,8 +219,8 @@ func (h *UIHandler) SearchResults(c *gin.Context) {
 // RegisterRoutes registers the UI routes
 func (h *UIHandler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/", h.Home)
-	router.GET("/images/:id", h.ImageDetail)
+	router.GET("/view-image/:id", h.ImageDetail) // Changed from /images/:id to avoid conflict
 	router.GET("/upload", h.Upload)
-	router.GET("/images/:id/edit", h.Edit)
+	router.GET("/view-image/:id/edit", h.Edit) // Changed from /images/:id/edit to avoid conflict
 	router.GET("/search", h.SearchResults)
 }
