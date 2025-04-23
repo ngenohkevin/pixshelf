@@ -1,51 +1,51 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Install required packages
+# Install dependencies
 RUN apk add --no-cache git
 
-# Copy go.mod and go.sum first to leverage Docker cache
+# Copy go.mod and go.sum files
 COPY go.mod go.sum ./
+
+# Download dependencies
 RUN go mod download
 
-# Copy the rest of the application
+# Copy the source code
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o pixshelf ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o pixshelf ./cmd/server/main.go
 
-# Final stage
-FROM alpine:latest
+# Create a minimal image
+FROM alpine:3.19
 
-# Set working directory
 WORKDIR /app
 
-# Install necessary runtime dependencies
-RUN apk --no-cache add ca-certificates
+# Install dependencies and migrate tool directly
+RUN apk add --no-cache ca-certificates tzdata curl && \
+    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.16.2/migrate.linux-amd64.tar.gz | tar xvz && \
+    mv migrate /usr/local/bin/migrate && \
+    chmod +x /usr/local/bin/migrate
 
-# Copy the built binary from the builder stage
-COPY --from=builder /app/pixshelf .
+# Copy the binary from the builder stage
+COPY --from=builder /app/pixshelf /app/pixshelf
 
-# Copy static files and templates
-COPY --from=builder /app/static ./static
-COPY --from=builder /app/templates ./templates
+# Copy migrations, templates, and static files
+COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/templates /app/templates
+COPY --from=builder /app/static /app/static
 
-# Create a non-root user to run the application
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN chown -R appuser:appgroup /app
-USER appuser
+# Create directory for image storage
+RUN mkdir -p /app/static/images && chmod -R 755 /app/static/images
 
-# Expose port
+# Create startup script properly with actual newlines
+RUN printf '#!/bin/sh\nset -e\necho "Running database migrations..."\nmigrate -path /app/migrations -database "$DATABASE_URL" up\necho "Starting application..."\nexec /app/pixshelf\n' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Set the entrypoint
+ENTRYPOINT ["/app/start.sh"]
+
+# Expose the port
 EXPOSE 8080
-
-# Set environment variables
-ENV ENV=production
-ENV PORT=8080
-ENV DATABASE_URL=postgres://postgres:postgres@db:5432/pixshelf?sslmode=disable
-ENV IMAGE_STORAGE=/app/static/images
-ENV BASE_URL=http://localhost:8080
-
-# Run the application
-CMD ["./pixshelf"]
