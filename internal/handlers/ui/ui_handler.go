@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ngenohkevin/pixshelf/internal/auth"
+	"github.com/ngenohkevin/pixshelf/internal/db/sqlc"
 	"github.com/ngenohkevin/pixshelf/internal/service"
 	"github.com/ngenohkevin/pixshelf/templates"
 )
@@ -12,15 +14,25 @@ import (
 // UIHandler handles UI requests
 type UIHandler struct {
 	service *service.ImageService
+	db      *sqlc.Queries
 }
 
 // NewUIHandler creates a new UIHandler
-func NewUIHandler(service *service.ImageService) *UIHandler {
-	return &UIHandler{service: service}
+func NewUIHandler(service *service.ImageService, db *sqlc.Queries) *UIHandler {
+	return &UIHandler{
+		service: service,
+		db:      db,
+	}
 }
 
 // Home renders the homepage
 func (h *UIHandler) Home(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return
+	}
+
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -39,7 +51,7 @@ func (h *UIHandler) Home(c *gin.Context) {
 
 	if query != "" {
 		// Perform search
-		imgs, p, err := h.service.Search(c.Request.Context(), query, page, pageSize)
+		imgs, p, err := h.service.Search(c.Request.Context(), userID, query, page, pageSize)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return
@@ -70,7 +82,7 @@ func (h *UIHandler) Home(c *gin.Context) {
 		}
 	} else {
 		// List all images
-		imgs, p, err := h.service.List(c.Request.Context(), page, pageSize)
+		imgs, p, err := h.service.List(c.Request.Context(), userID, page, pageSize)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return
@@ -84,6 +96,7 @@ func (h *UIHandler) Home(c *gin.Context) {
 				Name:        img.Name,
 				Description: img.Description,
 				URL:         img.URL,
+				PublicURL:   img.PublicURL,
 				MimeType:    img.MimeType,
 				SizeBytes:   img.SizeBytes,
 				CreatedAt:   img.CreatedAt,
@@ -105,13 +118,19 @@ func (h *UIHandler) Home(c *gin.Context) {
 
 // ImageDetail renders the image detail page
 func (h *UIHandler) ImageDetail(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	img, err := h.service.GetByID(c.Request.Context(), id)
+	img, err := h.service.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -134,19 +153,31 @@ func (h *UIHandler) ImageDetail(c *gin.Context) {
 
 // Upload renders the upload page
 func (h *UIHandler) Upload(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return
+	}
+
 	component := templates.Upload()
 	component.Render(c.Request.Context(), c.Writer)
 }
 
 // Edit renders the edit page
 func (h *UIHandler) Edit(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	img, err := h.service.GetByID(c.Request.Context(), id)
+	img, err := h.service.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -166,6 +197,12 @@ func (h *UIHandler) Edit(c *gin.Context) {
 
 // SearchResults renders the search results for HTMX requests
 func (h *UIHandler) SearchResults(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+
 	query := c.Query("q")
 	if query == "" {
 		c.Status(http.StatusBadRequest)
@@ -182,7 +219,7 @@ func (h *UIHandler) SearchResults(c *gin.Context) {
 		pageSize = 20
 	}
 
-	imgs, p, err := h.service.Search(c.Request.Context(), query, page, pageSize)
+	imgs, p, err := h.service.Search(c.Request.Context(), userID, query, page, pageSize)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
@@ -217,7 +254,7 @@ func (h *UIHandler) SearchResults(c *gin.Context) {
 }
 
 // RegisterRoutes registers the UI routes
-func (h *UIHandler) RegisterRoutes(router *gin.Engine) {
+func (h *UIHandler) RegisterRoutes(router gin.IRouter) {
 	router.GET("/", h.Home)
 	router.GET("/view-image/:id", h.ImageDetail) // Changed from /images/:id to avoid conflict
 	router.GET("/upload", h.Upload)
