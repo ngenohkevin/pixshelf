@@ -4,6 +4,17 @@ import (
 	"time"
 )
 
+// User represents a user in the system
+type User struct {
+	ID        int64     `json:"id"`
+	GoogleID  string    `json:"google_id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	AvatarURL *string   `json:"avatar_url"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Image represents an image in the system
 type Image struct {
 	ID          int64     `json:"id"`
@@ -12,6 +23,7 @@ type Image struct {
 	FilePath    string    `json:"file_path"`
 	MimeType    string    `json:"mime_type"`
 	SizeBytes   int64     `json:"size_bytes"`
+	UserID      *int64    `json:"user_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
