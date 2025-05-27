@@ -40,9 +40,9 @@ func NewImageService(repo *repository.ImageRepository, cfg *config.Config) *Imag
 	}
 }
 
-// GetByID retrieves an image by ID
-func (s *ImageService) GetByID(ctx context.Context, id int64) (*models.PublicImage, error) {
-	img, err := s.repo.GetByID(ctx, id)
+// GetByID retrieves an image by ID for a specific user
+func (s *ImageService) GetByID(ctx context.Context, id int64, userID int64) (*models.PublicImage, error) {
+	img, err := s.repo.GetByID(ctx, id, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func (s *ImageService) GetByID(ctx context.Context, id int64) (*models.PublicIma
 	return models.NewPublicImage(img, s.cfg.BaseURL), nil
 }
 
-// List retrieves a paginated list of images
-func (s *ImageService) List(ctx context.Context, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error) {
+// List retrieves a paginated list of images for a specific user
+func (s *ImageService) List(ctx context.Context, userID int64, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -64,13 +64,13 @@ func (s *ImageService) List(ctx context.Context, page, pageSize int) ([]*models.
 		PageSize: pageSize,
 	}
 
-	total, err := s.repo.Count(ctx)
+	total, err := s.repo.Count(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 	pagination.Total = total
 
-	imgs, err := s.repo.List(ctx, pagination)
+	imgs, err := s.repo.List(ctx, userID, pagination)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,8 +83,8 @@ func (s *ImageService) List(ctx context.Context, page, pageSize int) ([]*models.
 	return publicImgs, pagination, nil
 }
 
-// Search searches for images by name or description
-func (s *ImageService) Search(ctx context.Context, query string, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error) {
+// Search searches for images by name or description for a specific user
+func (s *ImageService) Search(ctx context.Context, userID int64, query string, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -97,7 +97,7 @@ func (s *ImageService) Search(ctx context.Context, query string, page, pageSize 
 		PageSize: pageSize,
 	}
 
-	total, err := s.repo.SearchCount(ctx, query)
+	total, err := s.repo.SearchCount(ctx, userID, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -108,7 +108,7 @@ func (s *ImageService) Search(ctx context.Context, query string, page, pageSize 
 		Pagination: pagination,
 	}
 
-	imgs, err := s.repo.Search(ctx, params)
+	imgs, err := s.repo.Search(ctx, userID, params)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,8 +121,8 @@ func (s *ImageService) Search(ctx context.Context, query string, page, pageSize 
 	return publicImgs, pagination, nil
 }
 
-// Create creates a new image
-func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name, description string) (*models.PublicImage, error) {
+// Create creates a new image for a specific user
+func (s *ImageService) Create(ctx context.Context, userID int64, fileHeader interface{}, name, description string) (*models.PublicImage, error) {
 	file, ok := fileHeader.(*multipart.FileHeader)
 	if !ok {
 		return nil, errors.New("invalid file type")
@@ -139,7 +139,14 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
-	// Generate a unique filename that's more readable
+	// Use the provided name or fall back to the original filename
+	displayName := name
+	if displayName == "" {
+		// Remove extension from filename for display name
+		displayName = strings.TrimSuffix(file.Filename, filepath.Ext(file.Filename))
+	}
+
+	// Generate a unique filename for storage
 	// Format: {timestamp}_{original_name_sanitized}
 	filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), sanitizeFilename(file.Filename))
 	filePath := filepath.Join(s.uploadPath, filename)
@@ -179,11 +186,12 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 
 	// Create the image record
 	img := &models.Image{
-		Name:        name,
+		Name:        displayName,
 		Description: description,
 		FilePath:    filename,
 		MimeType:    file.Header.Get("Content-Type"),
 		SizeBytes:   file.Size,
+		UserID:      &userID,
 	}
 
 	// Save to database
@@ -200,10 +208,10 @@ func (s *ImageService) Create(ctx context.Context, fileHeader interface{}, name,
 	return models.NewPublicImage(img, s.cfg.BaseURL), nil
 }
 
-// Update updates an image's metadata
-func (s *ImageService) Update(ctx context.Context, id int64, name, description string) (*models.PublicImage, error) {
-	// Check if image exists
-	img, err := s.repo.GetByID(ctx, id)
+// Update updates an image's metadata for a specific user
+func (s *ImageService) Update(ctx context.Context, id int64, userID int64, name, description string) (*models.PublicImage, error) {
+	// Check if image exists and belongs to user
+	img, err := s.repo.GetByID(ctx, id, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +221,7 @@ func (s *ImageService) Update(ctx context.Context, id int64, name, description s
 	img.Description = description
 
 	// Save to database
-	img, err = s.repo.Update(ctx, img)
+	img, err = s.repo.Update(ctx, img, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -221,10 +229,10 @@ func (s *ImageService) Update(ctx context.Context, id int64, name, description s
 	return models.NewPublicImage(img, s.cfg.BaseURL), nil
 }
 
-// Delete deletes an image
-func (s *ImageService) Delete(ctx context.Context, id int64) error {
-	// Get the image to retrieve its file path
-	img, err := s.repo.GetByID(ctx, id)
+// Delete deletes an image for a specific user
+func (s *ImageService) Delete(ctx context.Context, id int64, userID int64) error {
+	// Get the image to retrieve its file path and verify ownership
+	img, err := s.repo.GetByID(ctx, id, userID)
 	if err != nil {
 		return err
 	}
@@ -236,7 +244,7 @@ func (s *ImageService) Delete(ctx context.Context, id int64) error {
 	}
 
 	// Delete from database
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, id, userID)
 }
 
 // Helper functions
