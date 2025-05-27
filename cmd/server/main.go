@@ -11,7 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/ngenohkevin/pixshelf/internal/auth"
 	"github.com/ngenohkevin/pixshelf/internal/config"
 	"github.com/ngenohkevin/pixshelf/internal/db"
 	"github.com/ngenohkevin/pixshelf/internal/db/sqlc"
@@ -54,6 +57,17 @@ func main() {
 	// Set up the Gin router
 	router := gin.Default()
 
+	// Set up sessions
+	store := cookie.NewStore([]byte(cfg.SessionSecret))
+	store.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7, // 7 days
+		HttpOnly: true,
+		Secure:   !cfg.IsDevelopment(),
+		SameSite: http.SameSiteLaxMode,
+	})
+	router.Use(sessions.Sessions("pixshelf_session", store))
+
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
@@ -71,16 +85,33 @@ func main() {
 		c.Next()
 	})
 
-	// Set up the API endpoints
-	imageHandler := handlers.NewImageHandler(imageService)
-	imageHandler.RegisterRoutes(router)
+	// Initialize auth service
+	authConfig := &auth.AuthConfig{
+		GoogleClientID:     cfg.GoogleClientID,
+		GoogleClientSecret: cfg.GoogleClientSecret,
+		BaseURL:            cfg.BaseURL,
+	}
+	authService := auth.NewAuthService(authConfig, queries)
+	authHandler := auth.NewAuthHandler(authService)
 
-	// Set up the UI endpoints
-	uiHandler := ui.NewUIHandler(imageService)
-	uiHandler.RegisterRoutes(router)
+	// Set up auth routes (these don't require authentication)
+	authHandler.RegisterRoutes(router)
 
-	// Serve static files
-	router.Static("/static", "./static")
+	// Protected routes
+	protected := router.Group("/")
+	protected.Use(auth.RequireAuth())
+	{
+		// Set up the API endpoints
+		imageHandler := handlers.NewImageHandler(imageService)
+		imageHandler.RegisterRoutes(protected)
+
+		// Set up the UI endpoints
+		uiHandler := ui.NewUIHandler(imageService, queries)
+		uiHandler.RegisterRoutes(protected)
+
+		// Serve static files
+		protected.Static("/static", "./static")
+	}
 
 	// Set up the server
 	addr := fmt.Sprintf(":%d", cfg.ServerPort)
