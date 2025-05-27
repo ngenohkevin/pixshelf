@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ngenohkevin/pixshelf/internal/auth"
 	"github.com/ngenohkevin/pixshelf/internal/models"
 	"github.com/ngenohkevin/pixshelf/internal/service"
 	"github.com/ngenohkevin/pixshelf/internal/utils"
@@ -26,13 +27,19 @@ func NewImageHandler(service *service.ImageService) *ImageHandler {
 
 // GetImage retrieves an image by ID
 func (h *ImageHandler) GetImage(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.BadRequest(c, fmt.Errorf("invalid image ID: %w", err))
 		return
 	}
 
-	img, err := h.service.GetByID(c.Request.Context(), id)
+	img, err := h.service.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
 		utils.NotFound(c, "Image", id)
 		return
@@ -43,6 +50,12 @@ func (h *ImageHandler) GetImage(c *gin.Context) {
 
 // ListImages retrieves a list of images
 func (h *ImageHandler) ListImages(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -53,7 +66,7 @@ func (h *ImageHandler) ListImages(c *gin.Context) {
 		pageSize = 20
 	}
 
-	imgs, pagination, err := h.service.List(c.Request.Context(), page, pageSize)
+	imgs, pagination, err := h.service.List(c.Request.Context(), userID, page, pageSize)
 	if err != nil {
 		utils.InternalServerError(c, err)
 		return
@@ -67,6 +80,12 @@ func (h *ImageHandler) ListImages(c *gin.Context) {
 
 // SearchImages searches for images by name or description
 func (h *ImageHandler) SearchImages(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	query := c.Query("q")
 	if query == "" {
 		utils.BadRequest(c, fmt.Errorf("search query is required"))
@@ -83,7 +102,7 @@ func (h *ImageHandler) SearchImages(c *gin.Context) {
 		pageSize = 20
 	}
 
-	imgs, pagination, err := h.service.Search(c.Request.Context(), query, page, pageSize)
+	imgs, pagination, err := h.service.Search(c.Request.Context(), userID, query, page, pageSize)
 	if err != nil {
 		utils.InternalServerError(c, err)
 		return
@@ -97,6 +116,12 @@ func (h *ImageHandler) SearchImages(c *gin.Context) {
 
 // UploadImage uploads a new image
 func (h *ImageHandler) UploadImage(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return
+	}
+
 	log.Println("Upload image handler called")
 
 	// Get form values
@@ -104,12 +129,6 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 	description := c.PostForm("description")
 
 	log.Printf("Name: %s, Description: %s", name, description)
-
-	// Validate name
-	if name == "" {
-		utils.BadRequest(c, fmt.Errorf("name is required"))
-		return
-	}
 
 	// Get the file
 	file, err := c.FormFile("image")
@@ -122,7 +141,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 	log.Printf("File received: %s, size: %d", file.Filename, file.Size)
 
 	// Create the image
-	_, err = h.service.Create(c.Request.Context(), file, name, description)
+	_, err = h.service.Create(c.Request.Context(), userID, file, name, description)
 	if err != nil {
 		log.Printf("Error creating image: %v", err)
 		utils.InternalServerError(c, err)
@@ -135,6 +154,12 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 
 // UpdateImage updates an image's metadata
 func (h *ImageHandler) UpdateImage(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.BadRequest(c, fmt.Errorf("invalid image ID: %w", err))
@@ -152,7 +177,7 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	}
 
 	// Update the image
-	img, err := h.service.Update(c.Request.Context(), id, name, description)
+	img, err := h.service.Update(c.Request.Context(), id, userID, name, description)
 	if err != nil {
 		utils.NotFound(c, "Image", id)
 		return
@@ -163,13 +188,19 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 
 // DeleteImage deletes an image
 func (h *ImageHandler) DeleteImage(c *gin.Context) {
+	userID := auth.GetCurrentUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.BadRequest(c, fmt.Errorf("invalid image ID: %w", err))
 		return
 	}
 
-	err = h.service.Delete(c.Request.Context(), id)
+	err = h.service.Delete(c.Request.Context(), id, userID)
 	if err != nil {
 		utils.NotFound(c, "Image", id)
 		return
@@ -193,7 +224,7 @@ func (h *ImageHandler) GetImageByFilePath(c *gin.Context) {
 }
 
 // RegisterRoutes registers the image routes
-func (h *ImageHandler) RegisterRoutes(router *gin.Engine) {
+func (h *ImageHandler) RegisterRoutes(router gin.IRouter) {
 	api := router.Group("/api")
 	{
 		api.GET("/images", h.ListImages)
@@ -210,11 +241,11 @@ func (h *ImageHandler) RegisterRoutes(router *gin.Engine) {
 
 // ImageService defines the interface for image service
 type ImageService interface {
-	GetByID(ctx context.Context, id int64) (*models.PublicImage, error)
-	List(ctx context.Context, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error)
-	Search(ctx context.Context, query string, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error)
-	Create(ctx context.Context, file interface{}, name, description string) (*models.PublicImage, error)
-	Update(ctx context.Context, id int64, name, description string) (*models.PublicImage, error)
-	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64, userID int64) (*models.PublicImage, error)
+	List(ctx context.Context, userID int64, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error)
+	Search(ctx context.Context, userID int64, query string, page, pageSize int) ([]*models.PublicImage, *models.Pagination, error)
+	Create(ctx context.Context, userID int64, file interface{}, name, description string) (*models.PublicImage, error)
+	Update(ctx context.Context, id int64, userID int64, name, description string) (*models.PublicImage, error)
+	Delete(ctx context.Context, id int64, userID int64) error
 	GetUploadPath() string
 }
