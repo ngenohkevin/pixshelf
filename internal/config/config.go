@@ -12,11 +12,14 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	ServerPort   int
-	DatabaseURL  string
-	Environment  string
-	ImageStorage string
-	BaseURL      string
+	ServerPort         int
+	DatabaseURL        string
+	Environment        string
+	ImageStorage       string
+	BaseURL            string
+	GoogleClientID     string
+	GoogleClientSecret string
+	SessionSecret      string
 }
 
 // Load returns the application configuration
@@ -28,11 +31,14 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		ServerPort:   getEnvInt("PORT", 8080),
-		DatabaseURL:  getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/pixshelf?sslmode=disable"),
-		Environment:  getEnv("ENV", "development"),
-		ImageStorage: getEnv("IMAGE_STORAGE", "./static/images"),
-		BaseURL:      getEnv("BASE_URL", "http://localhost:8080"),
+		ServerPort:         getEnvInt("PORT", 8080),
+		DatabaseURL:        getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/pixshelf?sslmode=disable"),
+		Environment:        getEnv("ENV", "development"),
+		ImageStorage:       getEnv("IMAGE_STORAGE", "./static/images"),
+		BaseURL:            getEnv("BASE_URL", "http://localhost:8080"),
+		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+		SessionSecret:      getEnv("SESSION_SECRET", "your-secret-key-change-this"),
 	}
 
 	// Print the config for debugging
