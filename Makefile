@@ -68,11 +68,11 @@ db-stop:
 
 # Start the entire application stack
 docker-up:
-	docker-compose up -d
+	docker compose up -d
 
 # Stop the entire application stack
 docker-down:
-	docker-compose down
+	docker compose down
 
 # Show logs for the containers
 docker-logs:
