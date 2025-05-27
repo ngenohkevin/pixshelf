@@ -20,9 +20,12 @@ func NewImageRepository(q sqlc.Querier) *ImageRepository {
 	return &ImageRepository{q: q}
 }
 
-// GetByID retrieves an image by ID
-func (r *ImageRepository) GetByID(ctx context.Context, id int64) (*models.Image, error) {
-	img, err := r.q.GetImage(ctx, int32(id))
+// GetByID retrieves an image by ID for a specific user
+func (r *ImageRepository) GetByID(ctx context.Context, id int64, userID int64) (*models.Image, error) {
+	img, err := r.q.GetImageByUser(ctx, sqlc.GetImageByUserParams{
+		ID:     int32(id),
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image: %w", err)
 	}
@@ -30,9 +33,10 @@ func (r *ImageRepository) GetByID(ctx context.Context, id int64) (*models.Image,
 	return convertSQLCImage(img), nil
 }
 
-// List retrieves a paginated list of images
-func (r *ImageRepository) List(ctx context.Context, pagination *models.Pagination) ([]*models.Image, error) {
+// List retrieves a paginated list of images for a specific user
+func (r *ImageRepository) List(ctx context.Context, userID int64, pagination *models.Pagination) ([]*models.Image, error) {
 	arg := sqlc.ListImagesParams{
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
 		Limit:  int32(pagination.PageSize),
 		Offset: int32((pagination.Page - 1) * pagination.PageSize),
 	}
@@ -45,9 +49,9 @@ func (r *ImageRepository) List(ctx context.Context, pagination *models.Paginatio
 	return convertSQLCImages(imgs), nil
 }
 
-// Count returns the total number of images
-func (r *ImageRepository) Count(ctx context.Context) (int, error) {
-	count, err := r.q.CountImages(ctx)
+// Count returns the total number of images for a specific user
+func (r *ImageRepository) Count(ctx context.Context, userID int64) (int, error) {
+	count, err := r.q.CountImages(ctx, pgtype.Int4{Int32: int32(userID), Valid: true})
 	if err != nil {
 		return 0, fmt.Errorf("failed to count images: %w", err)
 	}
@@ -55,10 +59,11 @@ func (r *ImageRepository) Count(ctx context.Context) (int, error) {
 	return int(count), nil
 }
 
-// Search searches for images by name or description
-func (r *ImageRepository) Search(ctx context.Context, params *models.SearchParams) ([]*models.Image, error) {
+// Search searches for images by name or description for a specific user
+func (r *ImageRepository) Search(ctx context.Context, userID int64, params *models.SearchParams) ([]*models.Image, error) {
 	pattern := "%" + params.Query + "%"
 	arg := sqlc.SearchImagesParams{
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
 		Name:   pattern,
 		Limit:  int32(params.Pagination.PageSize),
 		Offset: int32((params.Pagination.Page - 1) * params.Pagination.PageSize),
@@ -72,10 +77,13 @@ func (r *ImageRepository) Search(ctx context.Context, params *models.SearchParam
 	return convertSQLCImages(imgs), nil
 }
 
-// SearchCount returns the total number of images matching a search query
-func (r *ImageRepository) SearchCount(ctx context.Context, query string) (int, error) {
+// SearchCount returns the total number of images matching a search query for a specific user
+func (r *ImageRepository) SearchCount(ctx context.Context, userID int64, query string) (int, error) {
 	pattern := "%" + query + "%"
-	count, err := r.q.CountSearchImages(ctx, pattern)
+	count, err := r.q.CountSearchImages(ctx, sqlc.CountSearchImagesParams{
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		Name:   pattern,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to count search results: %w", err)
 	}
@@ -83,11 +91,17 @@ func (r *ImageRepository) SearchCount(ctx context.Context, query string) (int, e
 	return int(count), nil
 }
 
-// Create creates a new image
+// Create creates a new image for a specific user
 func (r *ImageRepository) Create(ctx context.Context, image *models.Image) (*models.Image, error) {
 	var description pgtype.Text
 	description.String = image.Description
 	description.Valid = image.Description != ""
+
+	var userID pgtype.Int4
+	if image.UserID != nil {
+		userID.Int32 = int32(*image.UserID)
+		userID.Valid = true
+	}
 
 	arg := sqlc.CreateImageParams{
 		Name:        image.Name,
@@ -95,6 +109,7 @@ func (r *ImageRepository) Create(ctx context.Context, image *models.Image) (*mod
 		FilePath:    image.FilePath,
 		MimeType:    image.MimeType,
 		SizeBytes:   image.SizeBytes,
+		UserID:      userID,
 	}
 
 	img, err := r.q.CreateImage(ctx, arg)
@@ -105,8 +120,8 @@ func (r *ImageRepository) Create(ctx context.Context, image *models.Image) (*mod
 	return convertSQLCImage(img), nil
 }
 
-// Update updates an image's metadata
-func (r *ImageRepository) Update(ctx context.Context, image *models.Image) (*models.Image, error) {
+// Update updates an image's metadata for a specific user
+func (r *ImageRepository) Update(ctx context.Context, image *models.Image, userID int64) (*models.Image, error) {
 	var description pgtype.Text
 	description.String = image.Description
 	description.Valid = image.Description != ""
@@ -115,6 +130,7 @@ func (r *ImageRepository) Update(ctx context.Context, image *models.Image) (*mod
 		ID:          int32(image.ID),
 		Name:        image.Name,
 		Description: description,
+		UserID:      pgtype.Int4{Int32: int32(userID), Valid: true},
 	}
 
 	img, err := r.q.UpdateImage(ctx, arg)
@@ -125,9 +141,13 @@ func (r *ImageRepository) Update(ctx context.Context, image *models.Image) (*mod
 	return convertSQLCImage(img), nil
 }
 
-// Delete deletes an image
-func (r *ImageRepository) Delete(ctx context.Context, id int64) error {
-	if err := r.q.DeleteImage(ctx, int32(id)); err != nil {
+// Delete deletes an image for a specific user
+func (r *ImageRepository) Delete(ctx context.Context, id int64, userID int64) error {
+	err := r.q.DeleteImage(ctx, sqlc.DeleteImageParams{
+		ID:     int32(id),
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
+	})
+	if err != nil {
 		return fmt.Errorf("failed to delete image: %w", err)
 	}
 
@@ -139,6 +159,12 @@ func convertSQLCImage(img sqlc.Image) *models.Image {
 	description := ""
 	if img.Description.Valid {
 		description = img.Description.String
+	}
+
+	var userID *int64
+	if img.UserID.Valid {
+		uid := int64(img.UserID.Int32)
+		userID = &uid
 	}
 
 	createdAt := time.Now()
@@ -158,6 +184,7 @@ func convertSQLCImage(img sqlc.Image) *models.Image {
 		FilePath:    img.FilePath,
 		MimeType:    img.MimeType,
 		SizeBytes:   img.SizeBytes,
+		UserID:      userID,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
 	}
