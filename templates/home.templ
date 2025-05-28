@@ -2,8 +2,8 @@ package templates
 
 import "strconv"
 
-templ Home(images []*ImageData, pagination *Pagination, query string) {
-	@Layout("Home") {
+templ Home(images []*ImageData, pagination *Pagination, query string, user *UserData) {
+	@Layout("Home", user) {
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold mb-2">
 				if query != "" {
