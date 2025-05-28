@@ -25,3 +25,11 @@ type Pagination struct {
 	HasNext     bool
 	Query       string
 }
+
+// UserData represents the user data model for templates
+type UserData struct {
+	ID        int64
+	Name      string
+	Email     string
+	AvatarURL string
+}
