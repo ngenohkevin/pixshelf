@@ -103,14 +103,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	// Handle both GET and POST requests for logout
-	if c.Request.Method == "POST" {
-		c.Header("HX-Redirect", "/login")
-		c.Status(http.StatusOK)
-		return
-	}
-
-	c.Redirect(http.StatusTemporaryRedirect, "/login")
+	c.Redirect(http.StatusSeeOther, "/login")
 }
 
 func generateStateString() string {
