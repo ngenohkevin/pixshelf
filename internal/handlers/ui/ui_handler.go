@@ -33,6 +33,14 @@ func (h *UIHandler) Home(c *gin.Context) {
 		return
 	}
 
+	// Get current user data
+	sqlcUser, err := auth.GetCurrentUser(c, h.db)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	user := auth.ConvertUserToTemplateData(sqlcUser)
+
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -112,7 +120,7 @@ func (h *UIHandler) Home(c *gin.Context) {
 		}
 	}
 
-	component := templates.Home(images, pagination, query)
+	component := templates.Home(images, pagination, query, user)
 	component.Render(c.Request.Context(), c.Writer)
 }
 
@@ -123,6 +131,14 @@ func (h *UIHandler) ImageDetail(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/login")
 		return
 	}
+
+	// Get current user data
+	sqlcUser, err := auth.GetCurrentUser(c, h.db)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	user := auth.ConvertUserToTemplateData(sqlcUser)
 
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -147,7 +163,7 @@ func (h *UIHandler) ImageDetail(c *gin.Context) {
 		CreatedAt:   img.CreatedAt,
 	}
 
-	component := templates.ImageDetail(imageData)
+	component := templates.ImageDetail(imageData, user)
 	component.Render(c.Request.Context(), c.Writer)
 }
 
@@ -159,7 +175,15 @@ func (h *UIHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	component := templates.Upload()
+	// Get current user data
+	sqlcUser, err := auth.GetCurrentUser(c, h.db)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	user := auth.ConvertUserToTemplateData(sqlcUser)
+
+	component := templates.Upload(user)
 	component.Render(c.Request.Context(), c.Writer)
 }
 
@@ -170,6 +194,14 @@ func (h *UIHandler) Edit(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/login")
 		return
 	}
+
+	// Get current user data
+	sqlcUser, err := auth.GetCurrentUser(c, h.db)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	user := auth.ConvertUserToTemplateData(sqlcUser)
 
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -191,7 +223,7 @@ func (h *UIHandler) Edit(c *gin.Context) {
 		PublicURL:   img.PublicURL,
 	}
 
-	component := templates.Edit(imageData)
+	component := templates.Edit(imageData, user)
 	component.Render(c.Request.Context(), c.Writer)
 }
 
