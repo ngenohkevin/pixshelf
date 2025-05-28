@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/ngenohkevin/pixshelf/internal/db/sqlc"
+	"github.com/ngenohkevin/pixshelf/templates"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -137,5 +138,39 @@ func GetCurrentUserID(c *gin.Context) int64 {
 		return int64(v)
 	default:
 		return 0
+	}
+}
+
+// GetCurrentUser gets the current user data from database
+func GetCurrentUser(c *gin.Context, db *sqlc.Queries) (*sqlc.User, error) {
+	userID := GetCurrentUserID(c)
+	if userID == 0 {
+		return nil, fmt.Errorf("no user ID in context")
+	}
+
+	user, err := db.GetUser(context.Background(), int32(userID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return &user, nil
+}
+
+// ConvertUserToTemplateData converts sqlc.User to template UserData
+func ConvertUserToTemplateData(user *sqlc.User) *templates.UserData {
+	if user == nil {
+		return nil
+	}
+
+	avatarURL := ""
+	if user.AvatarUrl.Valid {
+		avatarURL = user.AvatarUrl.String
+	}
+
+	return &templates.UserData{
+		ID:        int64(user.ID),
+		Name:      user.Name,
+		Email:     user.Email,
+		AvatarURL: avatarURL,
 	}
 }
