@@ -146,9 +146,14 @@ func (s *ImageService) Create(ctx context.Context, userID int64, fileHeader inte
 		displayName = strings.TrimSuffix(file.Filename, filepath.Ext(file.Filename))
 	}
 
-	// Generate a unique filename for storage
-	// Format: {timestamp}_{original_name_sanitized}
-	filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), sanitizeFilename(file.Filename))
+	// Generate a unique filename for storage using the provided name
+	// Format: {timestamp}_{provided_name_sanitized}.{original_extension}
+	originalExt := filepath.Ext(file.Filename)
+	nameToUse := displayName
+	if nameToUse == "" {
+		nameToUse = strings.TrimSuffix(file.Filename, originalExt)
+	}
+	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), sanitizeFilename(nameToUse), originalExt)
 	filePath := filepath.Join(s.uploadPath, filename)
 
 	log.Printf("Saving file to: %s", filePath)
