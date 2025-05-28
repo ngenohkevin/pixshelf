@@ -1,6 +1,6 @@
 package templates
 
-templ Layout(title string) {
+templ Layout(title string, user *UserData) {
 	<!doctype html>
 	<html lang="en">
 		<head>
@@ -126,21 +126,45 @@ templ Layout(title string) {
 							// Add tooltip functionality
 							button.addEventListener('mouseenter', function() {
 								// Remove any existing tooltips first
-								const existingTooltip = button.querySelector('.tooltip');
+								const existingTooltip = document.querySelector('.custom-tooltip');
 								if (existingTooltip) existingTooltip.remove();
 								
 								const tooltip = document.createElement('div');
-								tooltip.className = 'tooltip bg-gray-800 text-white text-xs rounded py-1 px-2 absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 transition-opacity duration-200';
+								tooltip.className = 'custom-tooltip fixed bg-gray-800 text-white text-xs rounded py-2 px-3 opacity-0 transition-opacity duration-200 z-50 pointer-events-none';
 								tooltip.innerText = 'Copy to clipboard';
-								tooltip.style.zIndex = '50';
-								button.appendChild(tooltip);
-								setTimeout(() => tooltip.classList.add('opacity-100'), 10);
+								tooltip.style.border = '1px solid rgba(187, 134, 252, 0.3)';
+								tooltip.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+								
+								document.body.appendChild(tooltip);
+								
+								// Position tooltip
+								const rect = button.getBoundingClientRect();
+								const tooltipRect = tooltip.getBoundingClientRect();
+								
+								// Position above the button
+								let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+								let top = rect.top - tooltipRect.height - 8;
+								
+								// Adjust if tooltip goes off screen
+								if (left < 8) left = 8;
+								if (left + tooltipRect.width > window.innerWidth - 8) {
+									left = window.innerWidth - tooltipRect.width - 8;
+								}
+								if (top < 8) {
+									// Show below button if no space above
+									top = rect.bottom + 8;
+								}
+								
+								tooltip.style.left = left + 'px';
+								tooltip.style.top = top + 'px';
+								
+								setTimeout(() => tooltip.style.opacity = '1', 10);
 							});
 							
 							button.addEventListener('mouseleave', function() {
-								const tooltip = button.querySelector('.tooltip');
+								const tooltip = document.querySelector('.custom-tooltip');
 								if (tooltip) {
-									tooltip.classList.remove('opacity-100');
+									tooltip.style.opacity = '0';
 									setTimeout(() => tooltip.remove(), 200);
 								}
 							});
@@ -512,6 +536,18 @@ templ Layout(title string) {
 					backdrop-filter: blur(10px);
 				}
 				
+				/* Notification animation */
+				@keyframes fadeInOut {
+					0% { opacity: 0; transform: translate(-50%, -20px); }
+					10% { opacity: 1; transform: translate(-50%, 0); }
+					90% { opacity: 1; transform: translate(-50%, 0); }
+					100% { opacity: 0; transform: translate(-50%, -20px); }
+				}
+				
+				.animate-fade-in-out {
+					animation: fadeInOut 2s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+				}
+				
 				/* Better shadows for cards */
 				.shadow-xl {
 					box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2),
@@ -546,20 +582,46 @@ templ Layout(title string) {
 								<span>Upload</span>
 							</a>
 							
-							<!-- User menu - placeholder, will be populated with proper user data -->
+							<!-- User menu -->
 							<div class="relative" x-data="{ open: false }">
-								<button 
-									@click="open = !open" 
-									class="flex items-center space-x-2 text-white hover:text-primary transition-colors duration-200"
-								>
-									<div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-black font-bold text-sm">
+							<button 
+							@click="open = !open" 
+							class="flex items-center space-x-2 text-white hover:text-primary transition-colors duration-200"
+							>
+							if user != nil && user.AvatarURL != "" {
+								<img 
+									src={ user.AvatarURL } 
+									alt={ user.Name } 
+									class="w-8 h-8 rounded-full" 
+									onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+								/>
+								<div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-black font-bold text-sm" style="display: none;">
+									if user != nil && user.Name != "" {
+										{ string(user.Name[0]) }
+									} else {
 										U
-									</div>
-									<span class="hidden sm:block">User</span>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-									</svg>
-								</button>
+									}
+								</div>
+							} else {
+								<div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-black font-bold text-sm">
+									if user != nil && user.Name != "" {
+										{ string(user.Name[0]) }
+									} else {
+										U
+									}
+								</div>
+							}
+							<span class="hidden sm:block">
+								if user != nil && user.Name != "" {
+									{ user.Name }
+								} else {
+									User
+								}
+							</span>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+							</svg>
+							</button>
 								
 								<div 
 									x-show="open" 
