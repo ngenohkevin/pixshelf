@@ -10,19 +10,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ngenohkevin/pixshelf/internal/auth"
+	"github.com/ngenohkevin/pixshelf/internal/db/sqlc"
 	"github.com/ngenohkevin/pixshelf/internal/models"
 	"github.com/ngenohkevin/pixshelf/internal/service"
 	"github.com/ngenohkevin/pixshelf/internal/utils"
+	"github.com/ngenohkevin/pixshelf/templates"
 )
 
 // ImageHandler handles HTTP requests for images
 type ImageHandler struct {
 	service *service.ImageService
+	db      *sqlc.Queries
 }
 
 // NewImageHandler creates a new ImageHandler
-func NewImageHandler(service *service.ImageService) *ImageHandler {
-	return &ImageHandler{service: service}
+func NewImageHandler(service *service.ImageService, db *sqlc.Queries) *ImageHandler {
+	return &ImageHandler{service: service, db: db}
 }
 
 // GetImage retrieves an image by ID
@@ -183,6 +186,35 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 		return
 	}
 
+	// Check if this is an HTMX request
+	if c.GetHeader("HX-Request") == "true" {
+		// Get current user data for template
+		sqlcUser, err := auth.GetCurrentUser(c, h.db)
+		if err != nil {
+			c.Status(http.StatusUnauthorized)
+			return
+		}
+		user := auth.ConvertUserToTemplateData(sqlcUser)
+
+		// Convert image to template data
+		imageData := &templates.ImageData{
+			ID:          img.ID,
+			Name:        img.Name,
+			Description: img.Description,
+			URL:         img.URL,
+			PublicURL:   img.PublicURL,
+			MimeType:    img.MimeType,
+			SizeBytes:   img.SizeBytes,
+			CreatedAt:   img.CreatedAt,
+		}
+
+		// Render the image detail template
+		component := templates.ImageDetail(imageData, user)
+		component.Render(c.Request.Context(), c.Writer)
+		return
+	}
+
+	// For non-HTMX requests, return JSON
 	c.JSON(http.StatusOK, img)
 }
 
