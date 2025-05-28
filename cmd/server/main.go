@@ -102,7 +102,7 @@ func main() {
 	protected.Use(auth.RequireAuth())
 	{
 		// Set up the API endpoints
-		imageHandler := handlers.NewImageHandler(imageService)
+		imageHandler := handlers.NewImageHandler(imageService, queries)
 		imageHandler.RegisterRoutes(protected)
 
 		// Set up the UI endpoints
