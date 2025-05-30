@@ -267,8 +267,7 @@ func (h *ImageHandler) RegisterRoutes(router gin.IRouter) {
 		api.DELETE("/images/:id", h.DeleteImage)
 	}
 
-	// Add the public image URL route
-	router.GET("/public-images/:filepath", h.GetImageByFilePath)
+	// Note: public-images route is now handled in main.go as a public route
 }
 
 // ImageService defines the interface for image service
