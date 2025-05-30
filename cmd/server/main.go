@@ -97,12 +97,21 @@ func main() {
 	// Set up auth routes (these don't require authentication)
 	authHandler.RegisterRoutes(router)
 
+	// Initialize handlers for both protected and public routes
+	imageHandler := handlers.NewImageHandler(imageService, queries)
+
+	// Public routes (no authentication required)
+	public := router.Group("/")
+	{
+		// Public image access for external apps
+		public.GET("/public-images/:filepath", imageHandler.GetImageByFilePath)
+	}
+
 	// Protected routes
 	protected := router.Group("/")
 	protected.Use(auth.RequireAuth())
 	{
 		// Set up the API endpoints
-		imageHandler := handlers.NewImageHandler(imageService, queries)
 		imageHandler.RegisterRoutes(protected)
 
 		// Set up the UI endpoints
