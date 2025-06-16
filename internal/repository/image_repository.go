@@ -154,6 +154,40 @@ func (r *ImageRepository) Delete(ctx context.Context, id int64, userID int64) er
 	return nil
 }
 
+// ListCursor retrieves a paginated list of images using cursor-based pagination
+func (r *ImageRepository) ListCursor(ctx context.Context, userID int64, cursor int64, limit int) ([]*models.Image, error) {
+	arg := sqlc.ListImagesCursorParams{
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		ID:     int32(cursor),
+		Limit:  int32(limit),
+	}
+
+	imgs, err := r.q.ListImagesCursor(ctx, arg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list images with cursor: %w", err)
+	}
+
+	return convertSQLCImages(imgs), nil
+}
+
+// SearchCursor searches for images using cursor-based pagination
+func (r *ImageRepository) SearchCursor(ctx context.Context, userID int64, params *models.CursorSearchParams) ([]*models.Image, error) {
+	pattern := "%" + params.Query + "%"
+	arg := sqlc.SearchImagesCursorParams{
+		UserID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		ID:     int32(params.Pagination.Cursor),
+		Name:   pattern,
+		Limit:  int32(params.Pagination.PageSize),
+	}
+
+	imgs, err := r.q.SearchImagesCursor(ctx, arg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search images with cursor: %w", err)
+	}
+
+	return convertSQLCImages(imgs), nil
+}
+
 // Helper functions to convert between SQLC and domain models
 func convertSQLCImage(img sqlc.Image) *models.Image {
 	description := ""
