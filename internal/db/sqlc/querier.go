@@ -24,7 +24,9 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByGoogleID(ctx context.Context, googleID string) (User, error)
 	ListImages(ctx context.Context, arg ListImagesParams) ([]Image, error)
+	ListImagesCursor(ctx context.Context, arg ListImagesCursorParams) ([]Image, error)
 	SearchImages(ctx context.Context, arg SearchImagesParams) ([]Image, error)
+	SearchImagesCursor(ctx context.Context, arg SearchImagesCursorParams) ([]Image, error)
 	UpdateImage(ctx context.Context, arg UpdateImageParams) (Image, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
