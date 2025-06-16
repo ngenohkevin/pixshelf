@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -19,13 +20,18 @@ import (
 
 // ImageHandler handles HTTP requests for images
 type ImageHandler struct {
-	service *service.ImageService
-	db      *sqlc.Queries
+	service   *service.ImageService
+	db        *sqlc.Queries
+	optimizer *service.ImageOptimizer
 }
 
 // NewImageHandler creates a new ImageHandler
-func NewImageHandler(service *service.ImageService, db *sqlc.Queries) *ImageHandler {
-	return &ImageHandler{service: service, db: db}
+func NewImageHandler(service *service.ImageService, db *sqlc.Queries, optimizer *service.ImageOptimizer) *ImageHandler {
+	return &ImageHandler{
+		service:   service,
+		db:        db,
+		optimizer: optimizer,
+	}
 }
 
 // GetImage retrieves an image by ID
@@ -251,8 +257,111 @@ func (h *ImageHandler) GetImageByFilePath(c *gin.Context) {
 		return
 	}
 
+	fullPath := filepath.Join(h.service.GetUploadPath(), filePath)
+
+	// Cloudflare-optimized headers
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.Header("Vary", "Accept-Encoding")
+
+	// Generate simple ETag from file info
+	fileInfo, err := os.Stat(fullPath)
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	etag := fmt.Sprintf(`"%x-%x"`, fileInfo.ModTime().Unix(), fileInfo.Size())
+	c.Header("ETag", etag)
+
+	if match := c.GetHeader("If-None-Match"); match == etag {
+		c.Status(http.StatusNotModified)
+		return
+	}
+
 	// Serve the static file
-	c.File(filepath.Join(h.service.GetUploadPath(), filePath))
+	c.File(fullPath)
+}
+
+// GetImageVariant serves an image variant (resized version)
+func (h *ImageHandler) GetImageVariant(c *gin.Context) {
+	size := c.Param("size")
+	filePath := c.Param("filepath")
+
+	// Remove leading slash from filepath since it's captured as /*filepath
+	if len(filePath) > 0 && filePath[0] == '/' {
+		filePath = filePath[1:]
+	}
+
+	if filePath == "" {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	originalPath := filepath.Join(h.service.GetUploadPath(), filePath)
+
+	// Check if original exists
+	if _, err := os.Stat(originalPath); err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	widthMap := map[string]int{
+		"thumb":  150,
+		"small":  480,
+		"medium": 800,
+	}
+
+	// Serve original if requested
+	if size == "original" {
+		// Cloudflare-optimized headers
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		c.Header("Vary", "Accept-Encoding")
+
+		// Generate ETag
+		fileInfo, _ := os.Stat(originalPath)
+		etag := fmt.Sprintf(`"%x-%x"`, fileInfo.ModTime().Unix(), fileInfo.Size())
+		c.Header("ETag", etag)
+
+		if match := c.GetHeader("If-None-Match"); match == etag {
+			c.Status(http.StatusNotModified)
+			return
+		}
+
+		c.File(originalPath)
+		return
+	}
+
+	// Get width for the requested size
+	width, ok := widthMap[size]
+	if !ok {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	// Get or create variant
+	variantPath, err := h.optimizer.GetOrCreateVariant(originalPath, width)
+	if err != nil {
+		// Fallback to original on error
+		log.Printf("Error creating variant: %v", err)
+		c.File(originalPath)
+		return
+	}
+
+	// Cloudflare-optimized headers
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.Header("Vary", "Accept-Encoding")
+
+	// Generate ETag for variant
+	fileInfo, _ := os.Stat(variantPath)
+	etag := fmt.Sprintf(`"%x-%x"`, fileInfo.ModTime().Unix(), fileInfo.Size())
+	c.Header("ETag", etag)
+
+	if match := c.GetHeader("If-None-Match"); match == etag {
+		c.Status(http.StatusNotModified)
+		return
+	}
+
+	c.File(variantPath)
 }
 
 // RegisterRoutes registers the image routes
