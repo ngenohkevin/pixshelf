@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,4 +38,23 @@ func buildPaginationURLString(page int, query string) string {
 		return "/?page=" + strconv.Itoa(page)
 	}
 	return "/search?q=" + url.QueryEscape(query) + "&page=" + strconv.Itoa(page)
+}
+
+// extractFilePath extracts the file path from a public URL
+// e.g., "http://localhost:8010/public-images/uuid_filename.jpg" -> "uuid_filename.jpg"
+// or "/public-images/uuid_filename.jpg" -> "uuid_filename.jpg"
+func extractFilePath(publicURL string) string {
+	// Handle full URLs (with domain)
+	if strings.Contains(publicURL, "/public-images/") {
+		parts := strings.Split(publicURL, "/public-images/")
+		if len(parts) >= 2 {
+			return parts[len(parts)-1]
+		}
+	}
+	// Handle relative URLs
+	if strings.HasPrefix(publicURL, "/public-images/") {
+		return strings.TrimPrefix(publicURL, "/public-images/")
+	}
+	// Fallback: return the URL as-is if format doesn't match
+	return publicURL
 }
