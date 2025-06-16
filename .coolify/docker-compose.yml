@@ -1,0 +1,20 @@
+services:
+  app:
+    image: ${COOLIFY_IMAGE}
+    environment:
+      - GOGC=100  # More aggressive garbage collection
+      - GOMEMLIMIT=4GiB  # Set memory limit
+      - GOMAXPROCS=3  # Leave 1 core for system
+    volumes:
+      - ./images:/app/static/images
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '3'
