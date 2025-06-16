@@ -45,7 +45,15 @@ templ ImageList(images []*ImageData, pagination *Pagination) {
 				<div class="transition-all duration-300 hover:-translate-y-2 relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl bg-gray-800/80 backdrop-blur-sm">
 					<a href={ templ.SafeURL("/view-image/" + strconv.FormatInt(image.ID, 10)) } class="block rounded-xl overflow-hidden h-full flex flex-col no-underline">
 						<div class="sm:h-48 h-40 overflow-hidden bg-gray-800 flex items-center justify-center relative">
-							<img src={ image.URL } alt={ image.Name } class="image-thumbnail w-full h-full object-cover" loading="lazy" />
+							<img 
+								src={ "/images/thumb/" + extractFilePath(image.PublicURL) }
+								srcset={ "/images/thumb/" + extractFilePath(image.PublicURL) + " 150w, /images/small/" + extractFilePath(image.PublicURL) + " 480w" }
+								sizes="(max-width: 640px) 150px, 240px"
+								alt={ image.Name } 
+								class="image-thumbnail w-full h-full object-cover" 
+								loading="lazy"
+								decoding="async"
+							/>
 							<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-30 hover:opacity-0 transition-all duration-300"></div>
 						</div>
 						<div class="p-4 sm:p-5 flex-grow bg-gray-800">

@@ -43,7 +43,15 @@ templ ImageDetail(image *ImageData, user *UserData) {
 				<p class="text-gray-300 mb-6">{ image.Description }</p>
 
 				<div class="bg-gray-800 rounded-lg overflow-hidden mb-6 image-detail-container">
-					<img src={ image.URL } alt={ image.Name } class="image-detail" />
+					<img 
+						src={ "/images/medium/" + extractFilePath(image.PublicURL) }
+						srcset={ "/images/small/" + extractFilePath(image.PublicURL) + " 480w, /images/medium/" + extractFilePath(image.PublicURL) + " 800w, /images/original/" + extractFilePath(image.PublicURL) + " 1200w" }
+						sizes="(max-width: 480px) 480px, (max-width: 800px) 800px, 1200px"
+						alt={ image.Name } 
+						class="image-detail w-full h-auto max-w-full" 
+						loading="lazy"
+						decoding="async"
+					/>
 				</div>
 
 				<div class="bg-dark-accent p-4 rounded-md mb-6">

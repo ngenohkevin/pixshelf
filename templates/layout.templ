@@ -9,7 +9,7 @@ templ Layout(title string, user *UserData) {
 			<title>{ title } | PixShelf</title>
 			<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 			<script src="https://unpkg.com/htmx.org@1.9.6"></script>
-			<script src="https://unpkg.com/alpinejs@3.12.3/dist/cdn.min.js" defer></script>
+			<!-- Replaced AlpineJS with minimal native JavaScript -->
 			<script>
 				// Global function for copying image URLs
 				function copyImageUrl(button) {
@@ -104,8 +104,51 @@ templ Layout(title string, user *UserData) {
 					}, 1500);
 				}
 
+				// Initialize user menu dropdown functionality
+				function initializeUserMenu() {
+					const menuButton = document.getElementById('user-menu-button');
+					const menuDropdown = document.getElementById('user-menu-dropdown');
+					
+					if (!menuButton || !menuDropdown) return;
+					
+					// Toggle dropdown on button click
+					menuButton.addEventListener('click', function(e) {
+						e.stopPropagation();
+						const isHidden = menuDropdown.classList.contains('hidden');
+						
+						if (isHidden) {
+							// Show dropdown
+							menuDropdown.classList.remove('hidden');
+							setTimeout(() => {
+								menuDropdown.classList.remove('opacity-0', 'scale-95');
+								menuDropdown.classList.add('opacity-100', 'scale-100');
+							}, 10);
+						} else {
+							// Hide dropdown
+							menuDropdown.classList.remove('opacity-100', 'scale-100');
+							menuDropdown.classList.add('opacity-0', 'scale-95');
+							setTimeout(() => {
+								menuDropdown.classList.add('hidden');
+							}, 100);
+						}
+					});
+					
+					// Close dropdown when clicking outside
+					document.addEventListener('click', function(e) {
+						if (!menuButton.contains(e.target) && !menuDropdown.contains(e.target)) {
+							menuDropdown.classList.remove('opacity-100', 'scale-100');
+							menuDropdown.classList.add('opacity-0', 'scale-95');
+							setTimeout(() => {
+								menuDropdown.classList.add('hidden');
+							}, 100);
+						}
+					});
+				}
+
 				// Initialize tooltips and event listeners for copy buttons
 				document.addEventListener('DOMContentLoaded', function() {
+					// Initialize user menu
+					initializeUserMenu();
 					// Direct binding for all copy buttons - make this our primary approach
 					document.body.addEventListener('click', function(e) {
 						const button = e.target.closest('.gallery-copy-btn, .copy-url-button');
@@ -583,9 +626,9 @@ templ Layout(title string, user *UserData) {
 							</a>
 							
 							<!-- User menu -->
-							<div class="relative" x-data="{ open: false }">
+							<div class="relative">
 							<button 
-							@click="open = !open" 
+							id="user-menu-button"
 							class="flex items-center space-x-2 text-white hover:text-primary transition-colors duration-200"
 							>
 							if user != nil && user.AvatarURL != "" {
@@ -624,15 +667,8 @@ templ Layout(title string, user *UserData) {
 							</button>
 								
 								<div 
-									x-show="open" 
-									@click.away="open = false"
-									x-transition:enter="transition ease-out duration-100"
-									x-transition:enter-start="transform opacity-0 scale-95"
-									x-transition:enter-end="transform opacity-100 scale-100"
-									x-transition:leave="transition ease-in duration-75"
-									x-transition:leave-start="transform opacity-100 scale-100"
-									x-transition:leave-end="transform opacity-0 scale-95"
-									class="absolute right-0 mt-2 w-48 bg-card border border-dark rounded-md shadow-lg z-50"
+									id="user-menu-dropdown"
+									class="absolute right-0 mt-2 w-48 bg-card border border-dark rounded-md shadow-lg z-50 hidden transition-all duration-100 opacity-0 scale-95"
 								>
 									<div class="py-1">
 										<form action="/auth/logout" method="POST" class="block">

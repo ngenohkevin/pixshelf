@@ -75,8 +75,20 @@ type Pagination struct {
 	Total    int `json:"total"`
 }
 
+// CursorPagination represents cursor-based pagination parameters
+type CursorPagination struct {
+	Cursor   int64 `json:"cursor"` // ID to paginate from
+	PageSize int   `json:"page_size"`
+}
+
 // SearchParams represents search parameters
 type SearchParams struct {
 	Query      string `json:"query"`
 	Pagination *Pagination
+}
+
+// CursorSearchParams represents cursor-based search parameters
+type CursorSearchParams struct {
+	Query      string            `json:"query"`
+	Pagination *CursorPagination `json:"pagination"`
 }
