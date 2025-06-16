@@ -17,8 +17,11 @@ build:
 	$(GO_BUILD) -o $(APP_NAME) ./cmd/server
 
 # Run the application
+# Generate templ templates
+templ:
+	templ generate
 run:
-	$(GO) run ./cmd/server
+	$(templ) $(GO) run ./cmd/server
 
 # Clean build artifacts
 clean:
@@ -51,9 +54,6 @@ migrate-down:
 sqlc:
 	sqlc generate
 
-# Generate templ templates
-templ:
-	templ generate
 
 # Set up the development environment
 setup: migrate-up sqlc templ
