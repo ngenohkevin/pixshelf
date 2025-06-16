@@ -5,7 +5,8 @@ go 1.23.0
 toolchain go1.23.5
 
 require (
-	github.com/a-h/templ v0.3.857
+	github.com/a-h/templ v0.3.898
+	github.com/disintegration/imaging v1.6.2
 	github.com/gin-contrib/sessions v1.0.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/jackc/pgx/v5 v5.5.4
@@ -43,7 +44,8 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
