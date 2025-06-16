@@ -75,3 +75,15 @@ WHERE id = $1 AND user_id = $2;
 -- name: GetImageByUser :one
 SELECT * FROM images
 WHERE id = $1 AND user_id = $2 LIMIT 1;
+
+-- name: ListImagesCursor :many
+SELECT * FROM images
+WHERE user_id = $1 AND id < $2
+ORDER BY id DESC
+LIMIT $3;
+
+-- name: SearchImagesCursor :many
+SELECT * FROM images
+WHERE user_id = $1 AND id < $2 AND (name ILIKE $3 OR description ILIKE $3)
+ORDER BY id DESC
+LIMIT $4;

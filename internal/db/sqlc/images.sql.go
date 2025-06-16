@@ -287,6 +287,49 @@ func (q *Queries) ListImages(ctx context.Context, arg ListImagesParams) ([]Image
 	return items, nil
 }
 
+const listImagesCursor = `-- name: ListImagesCursor :many
+SELECT id, name, description, file_path, mime_type, size_bytes, created_at, updated_at, user_id FROM images
+WHERE user_id = $1 AND id < $2
+ORDER BY id DESC
+LIMIT $3
+`
+
+type ListImagesCursorParams struct {
+	UserID pgtype.Int4 `json:"user_id"`
+	ID     int32       `json:"id"`
+	Limit  int32       `json:"limit"`
+}
+
+func (q *Queries) ListImagesCursor(ctx context.Context, arg ListImagesCursorParams) ([]Image, error) {
+	rows, err := q.db.Query(ctx, listImagesCursor, arg.UserID, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.FilePath,
+			&i.MimeType,
+			&i.SizeBytes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchImages = `-- name: SearchImages :many
 SELECT id, name, description, file_path, mime_type, size_bytes, created_at, updated_at, user_id FROM images
 WHERE user_id = $1 AND (name ILIKE $2 OR description ILIKE $2)
@@ -307,6 +350,55 @@ func (q *Queries) SearchImages(ctx context.Context, arg SearchImagesParams) ([]I
 		arg.Name,
 		arg.Limit,
 		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.FilePath,
+			&i.MimeType,
+			&i.SizeBytes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchImagesCursor = `-- name: SearchImagesCursor :many
+SELECT id, name, description, file_path, mime_type, size_bytes, created_at, updated_at, user_id FROM images
+WHERE user_id = $1 AND id < $2 AND (name ILIKE $3 OR description ILIKE $3)
+ORDER BY id DESC
+LIMIT $4
+`
+
+type SearchImagesCursorParams struct {
+	UserID pgtype.Int4 `json:"user_id"`
+	ID     int32       `json:"id"`
+	Name   string      `json:"name"`
+	Limit  int32       `json:"limit"`
+}
+
+func (q *Queries) SearchImagesCursor(ctx context.Context, arg SearchImagesCursorParams) ([]Image, error) {
+	rows, err := q.db.Query(ctx, searchImagesCursor,
+		arg.UserID,
+		arg.ID,
+		arg.Name,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
